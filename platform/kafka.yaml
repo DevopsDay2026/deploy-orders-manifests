@@ -1,0 +1,67 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kafka-config
+data:
+  KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kafka
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: kafka
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: kafka
+    spec:
+      containers:
+        - name: kafka
+          image: quay.io/strimzi/kafka:0.45.0-kafka-3.9.0
+          command:
+            - sh
+            - -c
+            - >-
+              bin/kafka-storage.sh format --ignore-formatted
+              -t "$(bin/kafka-storage.sh random-uuid)"
+              -c config/kraft/server.properties &&
+              exec bin/kafka-server-start.sh config/kraft/server.properties
+              --override advertised.listeners="${KAFKA_ADVERTISED_LISTENERS}"
+          envFrom:
+            - configMapRef:
+                name: kafka-config
+          env:
+            - name: LOG_DIR
+              value: /tmp/logs
+          ports:
+            - containerPort: 9092
+          resources:
+            requests:
+              cpu: 100m
+              memory: 512Mi
+            limits:
+              memory: 768Mi
+          securityContext:
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kafka
+spec:
+  selector:
+    app.kubernetes.io/name: kafka
+  ports:
+    - name: kafka
+      port: 9092
+      targetPort: 9092

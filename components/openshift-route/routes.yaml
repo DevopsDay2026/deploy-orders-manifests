@@ -1,0 +1,31 @@
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: orders-service
+spec:
+  # solo la API de negocio sale del clúster; /q/health, /q/metrics y /q/openapi quedan internos
+  path: /api
+  to:
+    kind: Service
+    name: orders-service
+  port:
+    targetPort: http
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: inventory-service
+spec:
+  # solo la API de negocio sale del clúster; /q/health, /q/metrics y /q/openapi quedan internos
+  path: /api
+  to:
+    kind: Service
+    name: inventory-service
+  port:
+    targetPort: http
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect

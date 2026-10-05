@@ -1,0 +1,15 @@
+# secretos y configuración local
+secrets.yaml
+run.sh
+.env
+.env.*
+!.env.example
+*.pem
+*.p12
+*.tfvars
+
+target/
+.terraform/
+.idea/
+.vscode/
+.DS_Store

@@ -1,0 +1,24 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: orders-service-config
+data:
+  DB_URL: jdbc:postgresql://orders-db-pod:5432/orders
+  KAFKA_BOOTSTRAP_SERVERS: kafka-pod:9092
+  LOG_JSON: "false"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: inventory-service-config
+data:
+  DB_URL: jdbc:postgresql://inventory-db-pod:5432/inventory
+  KAFKA_BOOTSTRAP_SERVERS: kafka-pod:9092
+  LOG_JSON: "false"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kafka-config
+data:
+  KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka-pod:9092

@@ -1,0 +1,41 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Laptop: kustomize build overlays/podman | podman kube play -
+resources:
+  - ../../base
+  - ../../platform
+
+images:
+  - name: orders-service
+    newName: localhost/orders-service
+    newTag: 1.0.0
+  - name: inventory-service
+    newName: localhost/inventory-service
+    newTag: 1.0.0
+
+patches:
+  # valores de ConfigMap: en Podman el nombre DNS de cada pod es "<deployment>-pod"
+  - path: config-values.yaml
+  # recursos: Podman rootless no siempre tiene los controladores de cgroups para aplicar límites
+  - path: no-resources.yaml
+    target:
+      kind: Deployment
+  # borde: en Podman no hay Route ni Ingress; el equivalente es publicar el puerto en el host
+  - path: host-port-orders.yaml
+    target:
+      kind: Deployment
+      name: orders-service
+  - path: host-port-inventory.yaml
+    target:
+      kind: Deployment
+      name: inventory-service
+  # bases de datos accesibles desde el host (DBeaver, psql): orders en 5432, inventory en 5433
+  - path: host-port-orders-db.yaml
+    target:
+      kind: Deployment
+      name: orders-db
+  - path: host-port-inventory-db.yaml
+    target:
+      kind: Deployment
+      name: inventory-db

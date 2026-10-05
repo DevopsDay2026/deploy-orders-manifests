@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: orders-service-config
+data:
+  DB_URL: jdbc:postgresql://orders-db:5432/orders
+  KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+  KAFKA_SECURITY_PROTOCOL: PLAINTEXT
+  ORDERS_PLACED_TOPIC: orders.placed
+  INVENTORY_RESERVED_TOPIC: inventory.reserved
+  INVENTORY_REJECTED_TOPIC: inventory.rejected
+  LOG_JSON: "true"
+  LOG_LEVEL: INFO

@@ -1,0 +1,29 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# ROSA (OpenShift en AWS): oc apply -k overlays/rosa
+# Mismo YAML que overlays/openshift; cambian réplicas, recursos y valores de ConfigMap.
+resources:
+  - ../../base
+  - ../../platform
+
+components:
+  - ../../components/openshift-route
+
+images:
+  - name: orders-service
+    newName: orders-service
+    newTag: 1.0.0
+  - name: inventory-service
+    newName: inventory-service
+    newTag: 1.0.0
+
+replicas:
+  - name: orders-service
+    count: 2
+  - name: inventory-service
+    count: 2
+
+patches:
+  - path: config-values.yaml
+  - path: resources.yaml
