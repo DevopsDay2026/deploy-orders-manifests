@@ -46,7 +46,7 @@ curl localhost:8081/api/v1/stock/SKU-1        # available: 3
 
 Para trabajar solo con los backends (modo dev o binario nativo, sin imágenes) no hace falta este
 repositorio: `./run.sh infra` en cualquiera de los dos backends levanta PostgreSQL y Kafka en pods
-propios (`local-postgres`, `local-kafka`). El pod `local-postgres` publica el puerto 5432,
+propios (`local-postgres`, `local-kafka`). El pod `local-postgres` publica el puerto 5433,
 igual que este overlay: antes de `podman kube play` hay que bajarlo con `./run.sh infra down`.
 
 Apagar: `kubectl kustomize overlays/podman | podman kube down -` (agregar `--force` para borrar
