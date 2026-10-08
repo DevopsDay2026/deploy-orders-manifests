@@ -1,0 +1,27 @@
+# Límite de memoria que sirve tanto para la imagen nativa (push desde la laptop) como para la
+# imagen JVM que produce el build S2I del Sandbox. Las requests siguen siendo las de la base.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: orders-service
+spec:
+  template:
+    spec:
+      containers:
+        - name: orders-service
+          resources:
+            limits:
+              memory: 512Mi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: inventory-service
+spec:
+  template:
+    spec:
+      containers:
+        - name: inventory-service
+          resources:
+            limits:
+              memory: 512Mi

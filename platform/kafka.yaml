@@ -5,6 +5,17 @@ metadata:
 data:
   KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
 ---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: kafka-data
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -27,11 +38,15 @@ spec:
           command:
             - sh
             - -c
+            # log.dirs apunta a un subdirectorio del volumen: la raíz de un PV ext4 trae lost+found
+            # y Kafka aborta al intentar cargarlo como partición
             - >-
+              sed 's#^log.dirs=.*#log.dirs=/var/lib/kafka/data#' config/kraft/server.properties
+              > /tmp/server.properties &&
               bin/kafka-storage.sh format --ignore-formatted
               -t "$(bin/kafka-storage.sh random-uuid)"
-              -c config/kraft/server.properties &&
-              exec bin/kafka-server-start.sh config/kraft/server.properties
+              -c /tmp/server.properties &&
+              exec bin/kafka-server-start.sh /tmp/server.properties
               --override advertised.listeners="${KAFKA_ADVERTISED_LISTENERS}"
           envFrom:
             - configMapRef:
@@ -39,8 +54,16 @@ spec:
           env:
             - name: LOG_DIR
               value: /tmp/logs
+            # el script arranca con -Xmx1G si no se define; debe caber en resources.limits.memory
+            - name: KAFKA_HEAP_OPTS
+              value: -Xms256m -Xmx512m
           ports:
             - containerPort: 9092
+          volumeMounts:
+            # con volumen, tópicos y offsets sobreviven al reinicio del pod (el Sandbox los
+            # elimina cada 12 h)
+            - name: data
+              mountPath: /var/lib/kafka
           resources:
             requests:
               cpu: 100m
@@ -49,10 +72,16 @@ spec:
               memory: 768Mi
           securityContext:
             runAsNonRoot: true
+            seccompProfile:
+              type: RuntimeDefault
             allowPrivilegeEscalation: false
             capabilities:
               drop:
                 - ALL
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: kafka-data
 ---
 apiVersion: v1
 kind: Service

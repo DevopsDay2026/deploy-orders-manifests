@@ -1,0 +1,102 @@
+# Generado por sandbox/render.py desde overlays/openshift. No editar a mano.
+apiVersion: v1
+data:
+  KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+kind: ConfigMap
+metadata:
+  labels:
+    app.kubernetes.io/component: platform
+    app.kubernetes.io/part-of: orders-app
+  name: kafka-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/component: platform
+    app.kubernetes.io/part-of: orders-app
+  name: kafka
+spec:
+  ports:
+  - name: kafka
+    port: 9092
+    targetPort: 9092
+  selector:
+    app.kubernetes.io/name: kafka
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  labels:
+    app.kubernetes.io/component: platform
+    app.kubernetes.io/part-of: orders-app
+  name: kafka-data
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/component: platform
+    app.kubernetes.io/part-of: orders-app
+  name: kafka
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: kafka
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/component: platform
+        app.kubernetes.io/name: kafka
+        app.kubernetes.io/part-of: orders-app
+    spec:
+      containers:
+      - command:
+        - sh
+        - -c
+        - sed 's#^log.dirs=.*#log.dirs=/var/lib/kafka/data#' config/kraft/server.properties
+          > /tmp/server.properties && bin/kafka-storage.sh format --ignore-formatted
+          -t "$(bin/kafka-storage.sh random-uuid)" -c /tmp/server.properties && exec
+          bin/kafka-server-start.sh /tmp/server.properties --override advertised.listeners="${KAFKA_ADVERTISED_LISTENERS}"
+        env:
+        - name: LOG_DIR
+          value: /tmp/logs
+        - name: KAFKA_HEAP_OPTS
+          value: -Xms256m -Xmx512m
+        envFrom:
+        - configMapRef:
+            name: kafka-config
+        image: quay.io/strimzi/kafka:0.45.0-kafka-3.9.0
+        name: kafka
+        ports:
+        - containerPort: 9092
+        resources:
+          limits:
+            memory: 768Mi
+          requests:
+            cpu: 100m
+            memory: 512Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          runAsNonRoot: true
+          seccompProfile:
+            type: RuntimeDefault
+        volumeMounts:
+        - mountPath: /var/lib/kafka
+          name: data
+      volumes:
+      - name: data
+        persistentVolumeClaim:
+          claimName: kafka-data

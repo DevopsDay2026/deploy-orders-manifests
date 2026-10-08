@@ -1,0 +1,80 @@
+apiVersion: build.openshift.io/v1
+kind: BuildConfig
+metadata:
+  name: orders-service
+  labels:
+    app.kubernetes.io/name: orders-service
+spec:
+  runPolicy: Serial
+  successfulBuildsHistoryLimit: 2
+  failedBuildsHistoryLimit: 2
+  source:
+    type: Git
+    git:
+      uri: https://github.com/DevopsDay2026/backend-orders-service.git
+      ref: main
+  strategy:
+    type: Source
+    sourceStrategy:
+      from:
+        kind: DockerImage
+        name: registry.access.redhat.com/ubi9/openjdk-21:latest
+      env:
+        # empaquetado fast-jar de Quarkus: qué copiar a /deployments y qué ejecutar
+        - name: MAVEN_S2I_ARTIFACT_DIRS
+          value: target/quarkus-app
+        - name: S2I_SOURCE_DEPLOYMENTS_FILTER
+          value: app lib quarkus quarkus-run.jar
+        - name: JAVA_APP_JAR
+          value: /deployments/quarkus-run.jar
+  output:
+    to:
+      kind: ImageStreamTag
+      name: orders-service:1.0.0
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1Gi
+    limits:
+      cpu: "1"
+      memory: 2Gi
+---
+apiVersion: build.openshift.io/v1
+kind: BuildConfig
+metadata:
+  name: inventory-service
+  labels:
+    app.kubernetes.io/name: inventory-service
+spec:
+  runPolicy: Serial
+  successfulBuildsHistoryLimit: 2
+  failedBuildsHistoryLimit: 2
+  source:
+    type: Git
+    git:
+      uri: https://github.com/DevopsDay2026/backend-inventory-service.git
+      ref: main
+  strategy:
+    type: Source
+    sourceStrategy:
+      from:
+        kind: DockerImage
+        name: registry.access.redhat.com/ubi9/openjdk-21:latest
+      env:
+        - name: MAVEN_S2I_ARTIFACT_DIRS
+          value: target/quarkus-app
+        - name: S2I_SOURCE_DEPLOYMENTS_FILTER
+          value: app lib quarkus quarkus-run.jar
+        - name: JAVA_APP_JAR
+          value: /deployments/quarkus-run.jar
+  output:
+    to:
+      kind: ImageStreamTag
+      name: inventory-service:1.0.0
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1Gi
+    limits:
+      cpu: "1"
+      memory: 2Gi

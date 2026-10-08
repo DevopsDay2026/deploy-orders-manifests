@@ -8,6 +8,7 @@ resources:
   - ../../platform
 
 components:
+  - ../../components/openshift-imagestream
   - ../../components/openshift-route
 
 images:

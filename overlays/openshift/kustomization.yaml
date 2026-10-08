@@ -1,13 +1,19 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
-# Developer Sandbox de OpenShift: oc apply -k overlays/openshift
-# Las imágenes se resuelven por ImageStream del proyecto (ver README).
+# Developer Sandbox de OpenShift: oc apply -k overlays/openshift, o pegar en la consola los
+# archivos de sandbox/ (generados desde este overlay con sandbox/render.py).
+# Las imágenes viven en el registro interno del proyecto y se resuelven por ImageStream
+# (components/openshift-imagestream); las produce el build S2I (components/openshift-build-s2i)
+# o un `podman push` de la imagen nativa. No se fija namespace: se despliega en el proyecto
+# activo de `oc project`, que en el Sandbox es el único al que tiene acceso el usuario.
 resources:
   - ../../base
   - ../../platform
 
 components:
+  - ../../components/openshift-imagestream
+  - ../../components/openshift-build-s2i
   - ../../components/openshift-route
 
 images:
@@ -17,3 +23,6 @@ images:
   - name: inventory-service
     newName: inventory-service
     newTag: 1.0.0
+
+patches:
+  - path: resources.yaml

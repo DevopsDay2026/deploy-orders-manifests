@@ -5,13 +5,16 @@ Kubernetes para la laptop (`podman kube play`), OpenShift (Developer Sandbox) y 
 solo cambian imagen/tag, réplicas, recursos y valores de `ConfigMap`/`Secret`.
 
 ```
-base/                         Deployment + Service + ConfigMap de orders-service e inventory-service
-platform/                     PostgreSQL por servicio + Kafka de un nodo (destinos sin servicios administrados)
-components/openshift-route/   Route de cada servicio (solo /api)
-overlays/podman/              laptop
-overlays/openshift/           Developer Sandbox
-overlays/rosa/                ROSA: 2 réplicas y más recursos
-secrets.example.yaml          plantilla de los Secret (secrets.yaml está ignorado por git)
+base/                              Deployment + Service + ConfigMap de orders-service e inventory-service
+platform/                          PostgreSQL por servicio + Kafka de un nodo (destinos sin servicios administrados)
+components/openshift-imagestream/  ImageStream con lookupPolicy.local (registro interno de OpenShift)
+components/openshift-build-s2i/    BuildConfig S2I desde GitHub (modo JVM) para el Sandbox
+components/openshift-route/        Route de cada servicio (solo /api)
+overlays/podman/                   laptop
+overlays/openshift/                Developer Sandbox
+overlays/rosa/                     ROSA: 2 réplicas y más recursos
+secrets.example.yaml               plantilla de los Secret (secrets.yaml está ignorado por git)
+sandbox/                           YAML por paso para pegar en la consola, paso a paso y CHECKLIST.md (generados del overlay openshift)
 ```
 
 ## Cómo correrlo en 3 comandos (laptop con Podman)
@@ -54,25 +57,43 @@ también los volúmenes) y `podman kube down secrets.yaml`.
 
 ## OpenShift (Developer Sandbox) y ROSA
 
-El Developer Sandbox es un clúster OpenShift; `overlays/openshift` y `overlays/rosa` usan el mismo
-YAML y solo difieren en réplicas, recursos y valores de `ConfigMap`. Las imágenes se suben al
-registro interno del proyecto y se resuelven por ImageStream.
+El Developer Sandbox es un clúster OpenShift (ROSA) con un solo proyecto por usuario,
+`<usuario>-dev`, que no se puede crear ni borrar: los manifiestos no fijan `namespace` y se
+aplican al proyecto activo. `overlays/openshift` y `overlays/rosa` usan el mismo YAML y solo
+difieren en réplicas, recursos y valores de `ConfigMap`. Las imágenes se suben al registro interno
+del proyecto y se resuelven por `ImageStream` (`components/openshift-imagestream`).
+
+Sin `oc`, todo se puede hacer desde la consola web pegando los archivos de `sandbox/` en
+**+ → Importar YAML**; el orden y la verificación de cada paso están en
+[sandbox/README.md](sandbox/README.md). Allí la imagen la construye el propio clúster con un
+build S2I desde GitHub (`components/openshift-build-s2i`, modo JVM), sin nada instalado en la
+laptop. Lo que sigue es el mismo flujo por terminal con la imagen nativa.
+
+Requisitos: `oc` instalado (consola → `?` → *Command Line Tools*, o
+<https://mirror.openshift.com/pub/openshift-v4/clients/ocp/stable/openshift-client-windows.zip>)
+y las dos imágenes construidas con `make image TAG=1.0.0` en cada backend.
 
 ```bash
-oc login --token=<token> --server=<api-del-sandbox>
+# 0. sesión: consola → menú de usuario → "Copy login command"
+oc login --token=<token> --server=https://api.<cluster>.openshiftapps.com:6443
+oc projects                              # verificar el nombre exacto; en el Sandbox es <usuario>-dev
+oc project <usuario>-dev
+oc describe appliedclusterresourcequota  # cuota del Sandbox: esta pila pide 1.8 Gi de límites de memoria y 3 PVC de 1 Gi
+oc describe limitrange                   # pone el límite de CPU por defecto; la base no fija limits.cpu
 
-# 1. la misma imagen que corrió en la laptop
+# 1. la misma imagen que corrió en la laptop, al registro interno del proyecto
 REGISTRY=$(oc registry info --public)
 oc whoami -t | podman login -u "$(oc whoami)" --password-stdin "$REGISTRY"
 for svc in orders-service inventory-service; do
   podman tag  localhost/$svc:1.0.0 "$REGISTRY/$(oc project -q)/$svc:1.0.0"
   podman push "$REGISTRY/$(oc project -q)/$svc:1.0.0"
 done
-oc set image-lookup orders-service inventory-service   # los Deployment resuelven "orders-service:1.0.0"
 
-# 2. secretos y aplicación
+# 2. secretos y aplicación (el ImageStream con lookupPolicy.local viene en el overlay)
+cp secrets.example.yaml secrets.yaml     # y reemplazar los <...>; la imagen de PostgreSQL rechaza el usuario "postgres"
 oc apply -f secrets.yaml
-oc apply -k overlays/openshift          # o: oc apply -k overlays/rosa
+oc apply -k overlays/openshift           # o: oc apply -k overlays/rosa
+oc rollout status deploy/orders-db deploy/inventory-db deploy/kafka
 oc rollout status deploy/orders-service deploy/inventory-service
 
 # 3. probar
@@ -83,16 +104,33 @@ curl -i -X POST "$ORDERS/api/v1/orders" -H 'Content-Type: application/json' \
   -d '{"customerId":"customer-1","lines":[{"sku":"SKU-1","quantity":2}]}'
 ```
 
-Estado de verificación: los tres overlays se validaron con `kustomize build`. El flujo completo en
-Podman y el despliegue en el Sandbox todavía no se han ejecutado de punta a punta.
+Si el push se hace antes que el `oc apply`, el registro crea el `ImageStream` sin
+`lookupPolicy.local`; el `apply` lo completa y los pods que ya fallaron con `ImagePullBackOff`
+se recuperan solos en el siguiente reintento. Si `oc registry info --public` no devuelve ruta,
+publicar las imágenes en un registro externo (por ejemplo `quay.io/<usuario>/<svc>:1.0.0`) y poner
+ese nombre en `newName:` del overlay; el componente de `ImageStream` se puede quitar.
+
+Los servicios arrancan con Flyway y el cliente de Kafka contra sus dependencias; si las bases o
+Kafka todavía no están listos, el contenedor sale y Kubernetes lo reintenta con *backoff*. Uno o
+dos reinicios en el primer despliegue son normales.
+
+El Sandbox elimina los pods a las 12 horas de ejecución continua. Los datos quedan en los PVC
+(las dos bases y Kafka); para volver a levantar todo:
+
+```bash
+oc scale deployment --all --replicas=1
+```
+
+Estado de verificación: los tres overlays se validaron con `kustomize build` (v5.4.3). El flujo
+completo en Podman y el despliegue en el Sandbox todavía no se han ejecutado de punta a punta.
 
 ## Qué cambia en cada destino
 
 | | `podman` | `openshift` | `rosa` |
 |---|---|---|---|
-| Imagen | `localhost/<svc>:1.0.0` | `<svc>:1.0.0` (ImageStream) | `<svc>:1.0.0` (ImageStream) |
+| Imagen | `localhost/<svc>:1.0.0` | `<svc>:1.0.0` (ImageStream; build S2I o push) | `<svc>:1.0.0` (ImageStream; push) |
 | Réplicas | 1 | 1 | 2 |
-| Recursos | sin límites (cgroups de Podman rootless) | base | más memoria y CPU |
+| Recursos | sin límites (cgroups de Podman rootless) | servicios con límite 512Mi (vale para JVM S2I y nativa) | más memoria y CPU |
 | `ConfigMap` | hosts `<deployment>-pod`, `LOG_JSON=false` | base | `OUTBOX_BATCH_SIZE=200` |
 | Borde | `hostPort` 8080 / 8081 (servicios) y 5432 / 5433 (bases, para DBeaver o `psql`) | `Route` (TLS edge, solo `/api`) | `Route` (TLS edge, solo `/api`) |
 | `Secret` | `podman kube play secrets.yaml` | `oc apply -f secrets.yaml` | `oc apply -f secrets.yaml` |

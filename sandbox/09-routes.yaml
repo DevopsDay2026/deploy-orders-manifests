@@ -1,0 +1,30 @@
+# Generado por sandbox/render.py desde overlays/openshift. No editar a mano.
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: inventory-service
+spec:
+  path: /api
+  port:
+    targetPort: http
+  tls:
+    insecureEdgeTerminationPolicy: Redirect
+    termination: edge
+  to:
+    kind: Service
+    name: inventory-service
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: orders-service
+spec:
+  path: /api
+  port:
+    targetPort: http
+  tls:
+    insecureEdgeTerminationPolicy: Redirect
+    termination: edge
+  to:
+    kind: Service
+    name: orders-service

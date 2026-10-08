@@ -1,0 +1,9 @@
+apiVersion: kustomize.config.k8s.io/v1alpha1
+kind: Component
+
+# Build dentro del clúster (S2I con OpenJDK 21, modo JVM) desde los repositorios públicos de GitHub,
+# para destinos donde no se puede subir la imagen nativa desde la laptop (Developer Sandbox).
+# Sin triggers: el build se inicia a mano (consola → Builds → Iniciar build, u `oc start-build`)
+# y publica en el mismo ImageStreamTag <svc>:1.0.0 que usaría la imagen nativa.
+resources:
+  - buildconfigs.yaml

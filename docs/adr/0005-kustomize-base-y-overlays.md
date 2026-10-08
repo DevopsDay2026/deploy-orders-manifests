@@ -17,7 +17,13 @@ diferencias pequeñas, explícitas y revisables.
 - `overlays/<destino>/` solo puede cambiar: imagen y tag, réplicas, recursos y valores de
   `ConfigMap`. Nada más se parchea.
 - Lo que es propio de la plataforma se **agrega** como recurso de borde, sin tocar la base:
-  `components/openshift-route` (dos `Route`) en `openshift` y `rosa`. En Podman el borde es
+  `components/openshift-route` (dos `Route`) y `components/openshift-imagestream` (dos `ImageStream`
+  con `lookupPolicy.local`, para resolver `<svc>:<tag>` contra el registro interno) en `openshift` y
+  `rosa`; `components/openshift-build-s2i` (dos `BuildConfig` sin triggers que compilan desde GitHub
+  en modo JVM hacia el mismo `ImageStreamTag`) solo en `openshift`, para el Sandbox donde no se
+  sube la imagen nativa desde la laptop.
+- `sandbox/` contiene la salida de `overlays/openshift` dividida por paso (`sandbox/render.py`),
+  para pegar en la consola web; se regenera, no se edita. En Podman el borde es
   `--publish` del propio `podman kube play`.
 - En Podman el overlay quita `resources`: el Podman rootless (por ejemplo sobre WSL) puede no tener
   delegados los controladores de cgroups y falla al aplicar límites. Es un cambio de recursos, que
