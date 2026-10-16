@@ -1,0 +1,17 @@
+# cp terraform.tfvars.example terraform.tfvars   (terraform.tfvars está ignorado por git)
+
+region       = "us-east-1"
+cluster_name = "orders-demo"
+
+# rosa list versions --hosted-cp
+openshift_version = "4.19.10"
+
+# Token de https://console.redhat.com/openshift/token/rosa; mejor por entorno:  export RHCS_TOKEN=...
+# rhcs_token = "..."
+
+replicas             = 3
+compute_machine_type = "m6i.xlarge"
+
+# Fuera de la demo: protege los datos y exige borrado explícito.
+# protect_data = true
+# kafka_auto_create_topics = false

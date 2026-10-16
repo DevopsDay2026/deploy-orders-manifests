@@ -13,3 +13,13 @@ target/
 .idea/
 .vscode/
 .DS_Store
+
+# terraform
+*.tfstate
+*.tfstate.*
+*.tfplan
+crash.log
+override.tf
+override.tf.json
+# overlays generados con los valores de terraform output
+overlays/local-*/

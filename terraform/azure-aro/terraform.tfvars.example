@@ -1,0 +1,20 @@
+# cp terraform.tfvars.example terraform.tfvars   (terraform.tfvars está ignorado por git)
+
+# az account show --query id -o tsv
+subscription_id = "00000000-0000-0000-0000-000000000000"
+
+location     = "eastus"
+cluster_name = "orders-demo"
+
+worker_vm_size = "Standard_D4s_v5"
+worker_count   = 3
+
+# az aro get-versions -l eastus
+# aro_version = "4.15.35"
+
+# Pull secret de Red Hat (opcional): https://console.redhat.com/openshift/install/pull-secret
+# pull_secret = "{\"auths\":{...}}"
+
+# Para un clúster sin exposición pública:
+# api_visibility     = "Private"
+# ingress_visibility = "Private"

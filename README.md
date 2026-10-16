@@ -124,6 +124,19 @@ oc scale deployment --all --replicas=1
 Estado de verificación: los tres overlays se validaron con `kustomize build` (v5.4.3). El flujo
 completo en Podman y el despliegue en el Sandbox todavía no se han ejecutado de punta a punta.
 
+## AWS y Azure (ROSA y ARO) con servicios administrados
+
+Guías paso a paso, con ECR/RDS/MSK en AWS y ACR/PostgreSQL/Event Hubs en Azure:
+
+- [docs/aws/README.md](docs/aws/README.md) — `overlays/rosa-aws`
+- [docs/azure/README.md](docs/azure/README.md) — `overlays/aro-azure`
+
+La infraestructura de ambas nubes también está como **Terraform**: [terraform/README.md](terraform/README.md)
+(`terraform/aws-rosa` y `terraform/azure-aro`).
+
+Ambos overlays compilan con `kustomize build`, pero **no se han desplegado**: no hubo acceso a esas
+nubes. Las guías marcan qué verificar en el primer despliegue real.
+
 ## Qué cambia en cada destino
 
 | | `podman` | `openshift` | `rosa` |
